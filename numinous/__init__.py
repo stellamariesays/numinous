@@ -30,11 +30,13 @@ Usage::
 """
 
 from .reach import ReachRegion, ReachReading, reach_scan
+from .bridge import open_from_atlas
 
-__version__ = "0.1.0"
+__version__ = "0.2.0"
 
 __all__ = [
     "ReachRegion",
     "ReachReading",
     "reach_scan",
+    "open_from_atlas",
 ]
