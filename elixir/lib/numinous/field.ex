@@ -46,24 +46,16 @@ defmodule Numinous.Field do
       start: {Numinous.Void, :open, [term, implied_by, pressure]},
       restart: :temporary,
     }
-
-    case DynamicSupervisor.start_child(__MODULE__, spec) do
-      {:ok, pid} ->
-        Registry.register_name(@registry, term, pid)
-        {:ok, pid}
-      {:error, reason} ->
-        {:error, reason}
-    end
+    DynamicSupervisor.start_child(__MODULE__, spec)
   end
 
   @doc "List all active Voids and their current state."
   def list_voids do
-    Registry.select(@registry, [{{:"$1", :"$2", :_}, [], [{{:"$1", :"$2"}}]}])
-    |> Enum.map(fn {term, pid} ->
+    Registry.select(@registry, [{{:"$1", :"$2", :"$3"}, [], [{{:"$1", :"$2"}}]}])
+    |> Enum.map(fn {_term, pid} ->
       if Process.alive?(pid) do
-        Numinous.Void.query(pid) |> Map.put(:pid, pid)
+        Numinous.Void.query(pid)
       else
-        Registry.unregister_name(@registry, term)
         nil
       end
     end)
@@ -74,12 +66,8 @@ defmodule Numinous.Field do
   @doc "Name a Void — an agent has covered this region. The Void exits."
   def name_void(term, agent) do
     case Registry.lookup(@registry, term) do
-      [{_term, pid}] ->
-        result = Numinous.Void.name(pid, agent)
-        Registry.unregister_name(@registry, term)
-        result
-      [] ->
-        {:error, :not_found}
+      [{pid, _}] -> Numinous.Void.name(pid, agent)
+      []         -> {:error, :not_found}
     end
   end
 
@@ -99,10 +87,5 @@ defmodule Numinous.Field do
     end)
     Logger.info("field: #{length(holes)} void(s) opened")
     :ok
-  end
-
-  # Private helper — register by name in Registry
-  defp register_name(registry, name, pid) do
-    Registry.register(registry, name, pid)
   end
 end
