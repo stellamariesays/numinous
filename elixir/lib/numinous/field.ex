@@ -78,19 +78,16 @@ defmodule Numinous.Field do
     |> Map.new(fn v -> {v.term, v.pressure} end)
   end
 
-  @doc "Open Voids from a list of hole maps (from Manifold atlas.holes() output). Capped at @max_voids by pressure."
+  @doc "Open Voids from a list of hole maps (from Manifold atlas.holes() output). Capped at @max_voids."
   def from_holes(holes) when is_list(holes) do
-    top = holes
-      |> Enum.sort_by(fn h -> Map.get(h, "pressure", 0.1) end, :desc)
-      |> Enum.take(@max_voids)
-
-    Enum.each(top, fn hole ->
+    holes
+    |> Enum.take(@max_voids)
+    |> Enum.each(fn hole ->
       term     = Map.get(hole, "term", hole)
       implied  = Map.get(hole, "implied_by", [])
       pressure = Map.get(hole, "pressure", 0.1)
       open_void(term, implied, pressure)
     end)
-    Logger.info("field: #{length(top)}/#{length(holes)} void(s) opened (cap: #{@max_voids})")
     :ok
   end
 end
