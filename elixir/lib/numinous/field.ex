@@ -27,6 +27,7 @@ defmodule Numinous.Field do
   require Logger
 
   @registry Numinous.VoidRegistry
+  @max_voids 5
 
   def start_link(init_arg) do
     DynamicSupervisor.start_link(__MODULE__, init_arg, name: __MODULE__)
@@ -77,15 +78,19 @@ defmodule Numinous.Field do
     |> Map.new(fn v -> {v.term, v.pressure} end)
   end
 
-  @doc "Open Voids from a list of hole maps (from Manifold atlas.holes() output)."
+  @doc "Open Voids from a list of hole maps (from Manifold atlas.holes() output). Capped at @max_voids by pressure."
   def from_holes(holes) when is_list(holes) do
-    Enum.each(holes, fn hole ->
+    top = holes
+      |> Enum.sort_by(fn h -> Map.get(h, "pressure", 0.1) end, :desc)
+      |> Enum.take(@max_voids)
+
+    Enum.each(top, fn hole ->
       term     = Map.get(hole, "term", hole)
       implied  = Map.get(hole, "implied_by", [])
       pressure = Map.get(hole, "pressure", 0.1)
       open_void(term, implied, pressure)
     end)
-    Logger.info("field: #{length(holes)} void(s) opened")
+    Logger.info("field: #{length(top)}/#{length(holes)} void(s) opened (cap: #{@max_voids})")
     :ok
   end
 end
