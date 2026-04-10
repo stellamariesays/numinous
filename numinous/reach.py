@@ -103,26 +103,49 @@ def _seam_tokens(atlas: Atlas) -> dict[str, list[str]]:
     return {tok: agents for tok, agents in token_agents.items() if len(agents) >= 2}
 
 
-def _existing_terms(atlas: Atlas) -> set[str]:
-    """All vocabulary terms currently in the atlas."""
-    terms: set[str] = set()
+def _existing_terms(atlas: Atlas) -> tuple[set[str], set[str]]:
+    """
+    Return two sets:
+      - domain_terms: original compound capability strings (e.g. 'identity-modeling')
+        Used for the exclusion filter — prevents re-generating already-covered regions.
+      - token_terms: tokenised vocabulary single-tokens (e.g. {'identity','modeling'})
+        Used for implied_by matching — stable counts, unaffected by domain size.
+    """
+    domain_terms: set[str] = set()
+    token_terms: set[str] = set()
     for chart in atlas.charts():
-        terms.update(chart.vocabulary)
-    return terms
+        domain_terms.update(chart.domain)
+        token_terms.update(chart.vocabulary)
+    return domain_terms, token_terms
 
 
 def _implied_compounds(
     shared_tokens: dict[str, list[str]],
-    existing_terms: set[str],
+    domain_terms: set[str],
+    token_terms: set[str],
     existing_tokens_by_agent: dict[str, Counter],
 ) -> list[tuple[str, float, list[str], list[str]]]:
     """
     Generate candidate compound terms from shared token pairs and triples.
     Returns list of (candidate_term, strength, implied_by_terms, covering_agents).
-    """
-    existing_normalized = {re.sub(r'[-_\s]+', '-', t.lower()) for t in existing_terms}
 
-    # All shared token pairs and triples
+    Two term sets serve different roles:
+      domain_terms — compound capability strings; used ONLY for the exclusion filter
+                     (already-covered regions should not re-appear as dark circles)
+      token_terms  — single vocab tokens; used for implied_by matching to keep
+                     implication counts stable regardless of domain_terms size
+    """
+    # Exclusion: skip candidates already covered as a compound capability.
+    # Must normalise compound strings (e.g. 'identity-modeling') to match
+    # the sorted-token candidate format (also 'identity-modeling').
+    existing_normalized = {re.sub(r'[-_\s]+', '-', t.lower()) for t in domain_terms}
+
+    # Implied-by matching uses single-token vocabulary terms (original behaviour).
+    # Each token_term is a single word; _tokenize returns a 1-element set.
+    # The n-1 permissive rule means: "this token is adjacent to the combo" —
+    # keeping implication_count small and strength well-calibrated.
+    token_list = list(token_terms)
+
     shared = list(shared_tokens.keys())
     candidates: dict[str, dict] = {}
 
@@ -137,10 +160,10 @@ def _implied_compounds(
             if len(candidate) < 6:
                 continue
 
-            # Which existing terms contain these tokens?
+            # Which vocabulary tokens are implied by (adjacent to) this combo?
             implied_by = []
             covering = set()
-            for term in existing_terms:
+            for term in token_list:
                 term_toks = _tokenize(term)
                 if all(tok in term_toks for tok in combo):
                     implied_by.append(term)
@@ -201,14 +224,14 @@ def reach_scan(atlas: Atlas, top_n: int = 15) -> ReachReading:
             print(f'{r.term}: {r.strength:.2f}')
     """
     shared_tokens = _seam_tokens(atlas)
-    existing_terms = _existing_terms(atlas)
+    domain_terms, token_terms = _existing_terms(atlas)
 
     # Token counts per agent (for internal use)
     tokens_by_agent: dict[str, Counter] = {}
     for chart in atlas.charts():
         tokens_by_agent[chart.agent_name] = _all_tokens(chart.vocabulary)
 
-    raw = _implied_compounds(shared_tokens, existing_terms, tokens_by_agent)
+    raw = _implied_compounds(shared_tokens, domain_terms, token_terms, tokens_by_agent)
     total_implied = len(raw)
 
     # Sort by strength desc, take top_n
