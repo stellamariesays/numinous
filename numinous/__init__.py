@@ -17,7 +17,7 @@ Modules:
 Usage::
 
     from numinous import reach_scan
-    from manifold import Atlas, CapabilityRegistry
+    from core import Atlas, CapabilityRegistry
 
     reg = CapabilityRegistry()
     # ... register agents ...

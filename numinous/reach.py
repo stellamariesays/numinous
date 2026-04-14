@@ -33,7 +33,7 @@ from collections import Counter, defaultdict
 from dataclasses import dataclass, field
 from itertools import combinations
 
-from manifold.atlas import Atlas
+from core.atlas import Atlas
 
 
 def _tokenize(term: str) -> set[str]:

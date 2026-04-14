@@ -7,7 +7,7 @@ and pipes into `mix numinous.open` to open live Void processes in the BEAM.
 
 Usage::
 
-    from manifold.atlas import Atlas
+    from core.atlas import Atlas
     from numinous.bridge import open_from_atlas
 
     atlas = Atlas.build(reg)
@@ -26,7 +26,7 @@ import json
 import subprocess
 from pathlib import Path
 
-from manifold.atlas import Atlas
+from core.atlas import Atlas
 
 from .reach import reach_scan
 
@@ -44,7 +44,7 @@ def _holes_from_atlas(atlas: Atlas) -> list[dict]:
         # Find which agents are adjacent (cover terms that overlap with this hole)
         adjacent = []
         for chart in atlas.charts():
-            from manifold.chart import _tokenize
+            from core.chart import _tokenize
             hole_tokens = _tokenize(term)
             if hole_tokens & chart.vocabulary:
                 adjacent.append(chart.agent_name)
