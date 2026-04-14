@@ -8,7 +8,7 @@ version = "0.1.0"
 description = "The ground the mesh floats in."
 requires-python = ">=3.11"
 dependencies = [
-    "manifold-mesh",
+    "manifold-mesh @ git+https://github.com/stellamariesays/Manifold.git",
 ]
 
 [tool.setuptools.packages.find]

@@ -2,6 +2,18 @@
 
 > *The ground the mesh floats in.*
 
+## Installation
+
+```bash
+pip install git+https://github.com/stellamariesays/numinous.git
+```
+
+**Requirements**:
+- Python 3.11+
+- Elixir/BEAM runtime (for void lifecycle features)
+
+The `manifold-mesh` dependency is automatically fetched from GitHub.
+
 ---
 
 ## What this is
