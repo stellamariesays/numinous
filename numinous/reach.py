@@ -141,10 +141,13 @@ def _implied_compounds(
     existing_normalized = {re.sub(r'[-_\s]+', '-', t.lower()) for t in domain_terms}
 
     # Implied-by matching uses single-token vocabulary terms (original behaviour).
-    # Each token_term is a single word; _tokenize returns a 1-element set.
-    # The n-1 permissive rule means: "this token is adjacent to the combo" —
-    # keeping implication_count small and strength well-calibrated.
     token_list = list(token_terms)
+
+    # Precompute token rarity (IDF-like): fewer agents = more specific
+    total_agents = len(existing_tokens_by_agent) or 1
+    token_rarity: dict[str, float] = {}
+    for tok, agents in shared_tokens.items():
+        token_rarity[tok] = 1.0 - (len(agents) / (2.0 * total_agents))
 
     shared = list(shared_tokens.keys())
     candidates: dict[str, dict] = {}
@@ -176,10 +179,24 @@ def _implied_compounds(
             if not implied_by:
                 continue
 
-            # Strength: how many distinct agents imply this / total agents
+            # Cross-domain bonus: tokens from DIFFERENT agents > always co-occurring
+            token_agent_sets = [set(shared_tokens[tok]) for tok in combo]
+            union = set()
+            intersection = None
+            for s in token_agent_sets:
+                union |= s
+                intersection = s if intersection is None else intersection & s
+            overlap_ratio = len(intersection or set()) / max(1, len(union))
+            cross_domain_bonus = 1.0 - overlap_ratio
+
+            # Average rarity of tokens in this combo
+            avg_rarity = sum(token_rarity.get(tok, 0.5) for tok in combo) / len(combo)
+
+            # Strength: base convergence * specificity * cross-domain
             agent_count = len(covering)
             implication_count = len(implied_by)
-            strength = round(min(1.0, (agent_count * implication_count) / 20.0), 4)
+            base = (agent_count * implication_count) / 20.0
+            strength = round(min(1.0, base * avg_rarity * (0.5 + 0.5 * cross_domain_bonus)), 4)
 
             if strength < 0.05:
                 continue
