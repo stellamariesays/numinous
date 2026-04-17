@@ -25,7 +25,7 @@ defmodule Numinous.Memory do
   use GenServer
   require Logger
 
-  @default_output "/home/sophia/numinous/memory/output"
+  @default_output "/home/marvin/.openclaw/workspace/data/numinous/memory"
   @render_interval_ms 15_000
 
   # ── Public API ───────────────────────────────────────────────────────────────

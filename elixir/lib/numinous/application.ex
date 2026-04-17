@@ -18,7 +18,7 @@ defmodule Numinous.Application do
       Numinous.ManifoldClient,
 
       # Memory — persists Void state to .md files for Python/OpenClaw
-      {Numinous.Memory, output_dir: "/home/sophia/numinous/memory/output"},
+      {Numinous.Memory, output_dir: Application.get_env(:numinous, :memory_output, "/home/marvin/.openclaw/workspace/data/numinous/memory")},
 
       # Scout — periodic reach scanner (starts last, may block on Python)
       Numinous.Scout,
