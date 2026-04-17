@@ -2,6 +2,7 @@ README.md
 pyproject.toml
 numinous/__init__.py
 numinous/bridge.py
+numinous/crypto_reach.py
 numinous/reach.py
 numinous.egg-info/PKG-INFO
 numinous.egg-info/SOURCES.txt

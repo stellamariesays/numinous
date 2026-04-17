@@ -1,1 +1,1 @@
-manifold-mesh
+manifold-mesh @ git+https://github.com/stellamariesays/Manifold.git

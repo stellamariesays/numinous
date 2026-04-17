@@ -17,6 +17,9 @@ defmodule Numinous.Application do
       # Manifold federation client (caches agent/capability data)
       Numinous.ManifoldClient,
 
+      # Memory — persists Void state to .md files for Python/OpenClaw
+      {Numinous.Memory, output_dir: "/home/sophia/numinous/memory/output"},
+
       # Scout — periodic reach scanner (starts last, may block on Python)
       Numinous.Scout,
     ]

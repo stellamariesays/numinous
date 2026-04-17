@@ -3,4 +3,4 @@ Name: numinous
 Version: 0.1.0
 Summary: The ground the mesh floats in.
 Requires-Python: >=3.11
-Requires-Dist: manifold-mesh
+Requires-Dist: manifold-mesh @ git+https://github.com/stellamariesays/Manifold.git
