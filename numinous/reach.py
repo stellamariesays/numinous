@@ -50,6 +50,39 @@ def _all_tokens(vocab: set[str]) -> Counter:
     return counts
 
 
+def auto_stoplist(
+    atlas: Atlas,
+    max_freq_ratio: float = 0.6,
+    min_absolute: int = 4,
+) -> set[str]:
+    """
+    Auto-generate a stoplist from the token frequency distribution.
+
+    Tokens that appear in more than ``max_freq_ratio`` of all agents
+    (and at least ``min_absolute`` agents) are generic noise — they
+    contribute no discriminative value and dominate reach_scan results.
+
+    Returns a set of token strings to exclude.
+    """
+    tokens_by_agent: dict[str, Counter] = {}
+    for chart in atlas.charts():
+        tokens_by_agent[chart.agent_name] = _all_tokens(chart.vocabulary)
+
+    total_agents = len(tokens_by_agent) or 1
+    agent_presence: Counter = Counter()  # token → number of agents it appears in
+    for counts in tokens_by_agent.values():
+        for tok in counts:
+            agent_presence[tok] += 1
+
+    stoplist: set[str] = set()
+    for tok, count in agent_presence.items():
+        freq_ratio = count / total_agents
+        if freq_ratio >= max_freq_ratio and count >= min_absolute:
+            stoplist.add(tok)
+
+    return stoplist
+
+
 @dataclass
 class ReachRegion:
     """
@@ -57,7 +90,8 @@ class ReachRegion:
 
     :param term: The implied term — what the mesh is gesturing at.
     :param strength: Convergence score 0.0–1.0. How strongly the existing mesh implies this region.
-    :param implied_by: Existing vocabulary terms that point toward this region.
+    :param implied_by: Existing *capability terms* (compound strings) that contributed
+        the tokens implying this region — not raw single tokens.
     :param covering_agents: Agents whose vocabulary comes closest to this region.
     :param interpretation: Human-readable label.
     """
@@ -248,8 +282,51 @@ def reach_scan(atlas: Atlas, top_n: int = 15) -> ReachReading:
     for chart in atlas.charts():
         tokens_by_agent[chart.agent_name] = _all_tokens(chart.vocabulary)
 
+    # Build auto-stoplist (issue #2)
+    stoplist = auto_stoplist(atlas)
+
     raw = _implied_compounds(shared_tokens, domain_terms, token_terms, tokens_by_agent)
     total_implied = len(raw)
+
+    # Filter out candidates whose combo tokens are entirely in the stoplist
+    raw = [
+        (term, strength, ib, ca)
+        for term, strength, ib, ca in raw
+        if not all(tok in stoplist for tok in _tokenize(term))
+    ]
+
+    # Resolve implied_by to capability *terms* not raw tokens (issue #3)
+    # Build reverse map: token → set of domain terms containing it
+    token_to_domain_terms: dict[str, list[str]] = defaultdict(list)
+    for dt in domain_terms:
+        for tok in _tokenize(dt):
+            token_to_domain_terms[tok].append(dt)
+
+    resolved_raw = []
+    for term, strength, implied_by, covering_agents in raw:
+        # For each raw token in implied_by, resolve to the domain terms
+        # that contributed it
+        resolved: list[str] = []
+        seen = set()
+        combo_tokens = set(_tokenize(term))
+        for raw_token in implied_by:
+            # raw_token might already be a domain term
+            if raw_token in domain_terms:
+                if raw_token not in seen:
+                    resolved.append(raw_token)
+                    seen.add(raw_token)
+            else:
+                # Resolve to domain terms that contain this token
+                for dt in token_to_domain_terms.get(raw_token, []):
+                    if dt not in seen and combo_tokens & _tokenize(dt):
+                        resolved.append(dt)
+                        seen.add(dt)
+        # Fallback: if resolution found nothing, keep original
+        if not resolved:
+            resolved = implied_by[:5]
+        resolved_raw.append((term, strength, resolved[:5], covering_agents))
+
+    raw = resolved_raw
 
     # Sort by strength desc, take top_n
     raw.sort(key=lambda x: x[1], reverse=True)
