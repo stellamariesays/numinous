@@ -29,7 +29,7 @@ Usage::
         print(f'  {region.term}: {region.strength:.2f} — implied by {region.implied_by}')
 """
 
-from .reach import ReachRegion, ReachReading, reach_scan
+from .reach import ReachRegion, ReachReading, reach_scan, auto_stoplist
 from .bridge import open_from_atlas
 
 __version__ = "0.2.0"
